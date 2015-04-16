@@ -5,13 +5,13 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "sqlite3.h"
-#include "fcntl.h"
+#include <fcntl.h>
 
 void process_query(const char* begin, const char* end, sqlite3* db)
 {
     while (end - begin)
     {
-        printf("%s\n", begin);
+        //printf("%s\n", begin);
         struct sqlite3_stmt* st;
 
         int code = sqlite3_prepare(db,
@@ -23,6 +23,7 @@ void process_query(const char* begin, const char* end, sqlite3* db)
         if (code != SQLITE_OK)
         {
             fprintf(stderr, "Сan't do prepare: %s\n", sqlite3_errmsg(db));
+            break;
         }
 
         const char *colName;
@@ -30,10 +31,11 @@ void process_query(const char* begin, const char* end, sqlite3* db)
         for (int i = 0; i < sqlite3_column_count(st); ++i)
         {
             colName = sqlite3_column_name(st, i);
-            printf("%s\t", colName);
+            printf("%-10s\t", colName);
         }
 
-        printf("\n");
+        if (sqlite3_column_count(st) > 0)
+            printf("\n");
 
         while (code = sqlite3_step(st) == SQLITE_ROW)
         {
@@ -42,7 +44,7 @@ void process_query(const char* begin, const char* end, sqlite3* db)
              for (int i = 0; i < sqlite3_column_count(st); ++i)
              {
                  text = sqlite3_column_text(st, i);
-                 printf("%s\t", text);
+                 printf("%-10s\t", text);
              }
 
              printf("\n");
@@ -53,8 +55,8 @@ void process_query(const char* begin, const char* end, sqlite3* db)
             return;
         }
 
-        printf("**********************************\n");
-        sleep(2);
+        //printf("\n");
+        //sleep(1);
     }
 }
 
@@ -67,9 +69,10 @@ int main(int argc, char **argv)
     if (argc != 3)
     {
         fprintf(stderr, "Wrong arguments\n");
+        return EXIT_FAILURE;
     }
   
-    rc = sqlite3_open("MusicDB", &db);
+    rc = sqlite3_open(argv[1], &db);
 
     if(rc != SQLITE_OK)
     {
@@ -80,7 +83,7 @@ int main(int argc, char **argv)
     
     printf("DB opened.\n");
 
-    FILE* query_file = fopen("query.txt", "r");
+    FILE* query_file = fopen(argv[2], "r");
 
     if (query_file == NULL)
     {
@@ -90,7 +93,7 @@ int main(int argc, char **argv)
 
     struct stat info;
     
-    if (stat("query.txt", &info) == -1)
+    if (stat(argv[2], &info) == -1)
     {
         perror("Can't get file size.");
         return 1;
@@ -102,7 +105,7 @@ int main(int argc, char **argv)
     char* data = (char*) malloc(size + 1);
     data[size] = '\0';
     fread(data, size, 1, query_file);
-    printf("Query is:\n%s\n", data);
+    printf("Query is:\n%s\n\n", data);
 
     struct sqlite3_stmt* st;
 
